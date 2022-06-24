@@ -11,12 +11,12 @@ data_source  = "https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Fumet2-da
 
 rule get_MultiAssayExp:
     output:
-        S3.remote(prefix + filename)
+        prefix + filename
     input:
         S3.remote(prefix + "processed/CLIN.csv"),
         S3.remote(prefix + "processed/EXPR.csv"),
-        S3.remote(prefix + "processed/cased_sequenced.csv",
-        S3.remote(prefix + "annotation/Gencode.v40.annotation.RData"))
+        S3.remote(prefix + "processed/cased_sequenced.csv"),
+        S3.remote(prefix + "annotation/Gencode.v40.annotation.RData")
     resources:
         mem_mb=3000,
         disk_mb=3000
