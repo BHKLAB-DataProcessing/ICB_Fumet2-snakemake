@@ -49,6 +49,6 @@ colnames(tpm) = sapply( colnames(tpm) , function(x){ paste( unlist( strsplit( x 
 colnames(tpm) = paste( "P" , colnames(tpm) , sep="" )
 
 case = read.csv( file.path(output_dir, "cased_sequenced.csv"), stringsAsFactors=FALSE , sep=";" )
-tpm = log2( tpm[ , colnames(tpm) %in% case[ case$expr %in% 1 , ]$patient ] + 1 )
+tpm = log2( tpm[ , colnames(tpm) %in% case[ case$expr %in% 1 , ]$patient ] + 0.001 )
 
 write.table( tpm , file= file.path(output_dir, "EXPR.csv") , quote=FALSE , sep=";" , col.names=TRUE , row.names=TRUE )

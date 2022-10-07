@@ -1,97 +1,82 @@
-from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
-S3 = S3RemoteProvider(
-    access_key_id=config["key"], 
-    secret_access_key=config["secret"],
-    host=config["host"],
-    stay_on_remote=False
-)
-prefix = config["prefix"]
-filename = config["filename"]
-data_source  = "https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Fumet2-data/main/"
+# from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
+# S3 = S3RemoteProvider(
+#     access_key_id=config["key"],
+#     secret_access_key=config["secret"],
+#     host=config["host"],
+#     stay_on_remote=False
+# )
+prefix = "/Users/minoru/Code/bhklab/ICBCuration/work_dir/ICB_Fumet2/"
 
-rule get_MultiAssayExp:
-    output:
-        S3.remote(prefix + filename)
+rule all:
     input:
-        S3.remote(prefix + "processed/CLIN.csv"),
-        S3.remote(prefix + "processed/EXPR.csv"),
-        S3.remote(prefix + "processed/cased_sequenced.csv"),
-        S3.remote(prefix + "annotation/Gencode.v40.annotation.RData")
-    resources:
-        mem_mb=3000,
-        disk_mb=3000
+        prefix + "processed/ICB_Fumet2_expr_gene_tpm.tsv",
+        prefix + "processed/ICB_Fumet2_expr_gene_counts.tsv",
+        prefix + "processed/ICB_Fumet2_expr_isoform_tpm.tsv",
+        prefix + "processed/ICB_Fumet2_expr_isoform_counts.tsv",
+        prefix + "processed/ICB_Fumet2_metadata.tsv"
+
+rule format_expr_data:
+    input:
+        prefix + "annotation/Gencode.v40.annotation.RData",
+        prefix + "download/ICB_Fumet2_RNAseq.zip",
+        prefix + "download/filereport_read_run_PRJNA786565_tsv.txt"
+    output:
+        prefix + "processed/ICB_Fumet2_expr_gene_tpm.tsv",
+        prefix + "processed/ICB_Fumet2_expr_gene_counts.tsv",
+        prefix + "processed/ICB_Fumet2_expr_isoform_tpm.tsv",
+        prefix + "processed/ICB_Fumet2_expr_isoform_counts.tsv"
     shell:
         """
-        Rscript -e \
-        '
-        load(paste0("{prefix}", "annotation/Gencode.v40.annotation.RData"))
-        source("https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Common/main/code/get_MultiAssayExp.R");
-        saveRDS(
-            get_MultiAssayExp(study = "Fumet.2", input_dir = paste0("{prefix}", "processed")), 
-            "{prefix}{filename}"
-        );
-        '
+        Rscript scripts/format_expr_data.R \
+        {prefix}download \
+        {prefix}processed \
+        {prefix}annotation \
+        """
+
+rule format_clin_data:
+    input:
+        prefix + "annotation/curation_tissue.csv",
+        prefix + "annotation/curation_drug.csv",
+        prefix + "download/GSE190265_series_matrix.txt.gz",
+        prefix + "download/GSE190265_samples_info_France3.csv.gz",
+    output:
+        prefix + "processed/ICB_Fumet2_metadata.tsv"
+    shell:
+        """
+        Rscript scripts/format_clin_data.R \
+        {prefix}download \
+        {prefix}processed \
         """
 
 rule download_annotation:
     output:
-        S3.remote(prefix + "annotation/Gencode.v40.annotation.RData")
+        prefix + "annotation/Gencode.v40.annotation.RData",
+        prefix + "annotation/curation_tissue.csv",
+        prefix + "annotation/curation_drug.csv"
     shell:
         """
-        wget https://github.com/BHKLAB-Pachyderm/Annotations/blob/master/Gencode.v40.annotation.RData?raw=true -O {prefix}annotation/Gencode.v40.annotation.RData 
-        """
-
-rule format_expr:
-    output:
-        S3.remote(prefix + "processed/EXPR.csv")
-    input:
-        S3.remote(prefix + "processed/cased_sequenced.csv"),
-        S3.remote(prefix + "download/EXPR.csv.gz")
-    resources:
-        mem_mb=2000
-    shell:
-        """
-        Rscript scripts/Format_EXPR.R \
-        {prefix}download \
-        {prefix}processed \
-        """
-
-rule format_clin:
-    output:
-        S3.remote(prefix + "processed/CLIN.csv")
-    input:
-        S3.remote(prefix + "download/CLIN.txt")
-    resources:
-        mem_mb=2000
-    shell:
-        """
-        Rscript scripts/Format_CLIN.R \
-        {prefix}download \
-        {prefix}processed \
-        """
-
-rule format_cased_sequenced:
-    output:
-        S3.remote(prefix + "processed/cased_sequenced.csv")
-    input:
-        S3.remote(prefix + "download/CLIN.txt")
-    resources:
-        mem_mb=2000
-    shell:
-        """
-        Rscript scripts/Format_cased_sequenced.R \
-        {prefix}download \
-        {prefix}processed \
+        wget https://github.com/BHKLAB-DataProcessing/Annotations/blob/master/Gencode.v40.annotation.RData?raw=true -O {prefix}annotation/Gencode.v40.annotation.RData 
+        wget https://github.com/BHKLAB-DataProcessing/ICB_Common/raw/main/data/curation_drug.csv -O {prefix}annotation/curation_drug.csv
+        wget https://github.com/BHKLAB-DataProcessing/ICB_Common/raw/main/data/curation_tissue.csv -O {prefix}annotation/curation_tissue.csv 
         """
 
 rule download_data:
     output:
-        S3.remote(prefix + "download/CLIN.txt"),
-        S3.remote(prefix + "download/EXPR.csv.gz")
-    resources:
-        mem_mb=2000
+        prefix + "download/GSE190265_series_matrix.txt.gz",
+        prefix + "download/GSE190265_samples_info_France3.csv.gz",
+        prefix + "download/ICB_Fumet2_RNAseq.zip",
+        prefix + "download/filereport_read_run_PRJNA786565_tsv.txt"
     shell:
         """
-        wget {data_source}CLIN.txt -O {prefix}download/CLIN.txt
-        wget {data_source}EXPR.csv.gz -O {prefix}download/EXPR.csv.gz
-        """ 
+        wget 'https://ftp.ncbi.nlm.nih.gov/geo/series/GSE190nnn/GSE190265/matrix/GSE190265_series_matrix.txt.gz' \
+            -O {prefix}download/GSE190265_series_matrix.txt.gz
+
+        wget 'https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE190265&format=file&file=GSE190265%5Fsamples%5Finfo%5FFrance3%2Ecsv%2Egz' \
+            -O {prefix}download/GSE190265_samples_info_France3.csv.gz
+
+        wget 'https://zenodo.org/record/7158382/files/ICB_Fumet2_RNAseq.zip?download=1' \
+            -O {prefix}download/ICB_Fumet2_RNAseq.zip
+
+        wget 'https://www.ebi.ac.uk/ena/portal/api/filereport?accession=PRJNA786565&result=read_run&fields=sample_accession,sample_title&format=tsv&download=true&limit=0' \
+            -O {prefix}download/filereport_read_run_PRJNA786565_tsv.txt
+        """
