@@ -4,6 +4,9 @@
 library(data.table)
 library(stringr)
 library(GEOquery)
+library(tibble)
+
+source("https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Common/main/code/Get_Response.R")
 
 args <- commandArgs(trailingOnly = TRUE)
 input_dir <- args[1]
@@ -28,6 +31,32 @@ pfs_df <- pfs_df[order(rownames(pfs_df)), ]
 clin <- cbind(clin, pfs_df)
 
 # TODO: Format the clinical data with common columns etc.
+selected_cols <- c('patientid', 'tissue:ch1', 'disease state:ch1', 'time_PFS', 'evtPFS')
+remaining_cols <- colnames(clin)[!colnames(clin) %in% selected_cols]
+clin <- clin[, c(selected_cols, remaining_cols)]
 
+colnames(clin)[colnames(clin) %in% selected_cols] <- c('patientid', 'tissueid', 'histo', 't.pfs', 'pfs')
+clin <- add_column(clin, response=NA, response.other.info=NA, recist=NA, .after='tissueid')
+clin$t.pfs <- as.numeric(clin$t.pfs)
+clin$pfs <- as.numeric(clin$pfs)
+clin$response <- Get_Response(clin)
+
+clin <- add_column(
+  clin, 
+  sex=NA,
+  age=NA,
+  stage=NA,
+  treatmentid="anti-PD-1/anti-PD-L1",
+  drug_type=NA,
+  dna=NA,
+  rna=NA,
+  t.os=NA,
+  os=NA,
+  survival_unit='month',
+  .after='patientid'
+)
+
+clin <- clin[, c("patientid", "sex", "age", "treatmentid", "tissueid", "histo", "stage", "response.other.info", "recist", "response", "drug_type", "dna", "rna", "t.pfs", "pfs", "t.os", "os", 'survival_unit', remaining_cols)]
+colnames(clin)[colnames(clin) %in% c('t.pfs', 'pfs', "t.os", "os")] <- c("survival_time_pfs", "event_occurred_pfs", 'survival_time_os', 'event_occurred_os')
 
 write.table(clin, file = file.path(output_dir, "ICB_Fumet2_metadata.tsv"), row.names = TRUE, col.names=TRUE, sep = "\t")
