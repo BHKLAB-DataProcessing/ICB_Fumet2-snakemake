@@ -27,11 +27,14 @@ unlink(file.path(input_dir, "rnaseq", "__MACOSX"), recursive = TRUE)
 process_kallisto_output(input_dir, tx2gene)
 
 expr_list <- readRDS(file.path(input_dir, "expr_list.rds"))
-
 for (name in names(expr_list)) {
   expr_df <- data.frame(expr_list[[name]])
   colnames(expr_df) <- unlist(lapply(colnames(expr_df), function(run_accession) {
-    return(seq_sample$sample_title[seq_sample$run_accession == run_accession])
+    sampleid <- seq_sample$sample_title[seq_sample$run_accession == run_accession]
+    if (!is.na(as.numeric(sampleid))) {
+      sampleid <- paste0("p", sampleid)
+    }
+    return(sampleid)
   }))
-  write.table(expr_df, file = file.path(output_dir, paste0("ICB_Fumet2_", name, ".tsv")), row.names = TRUE, col.names = TRUE, sep = "\t")
+  write.table(expr_df, file = file.path(output_dir, paste0("ICB_Fumet2_", name, ".tsv")), quote = FALSE, row.names = TRUE, col.names = TRUE, sep = "\t")
 }

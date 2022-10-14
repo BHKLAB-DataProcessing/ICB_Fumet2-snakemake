@@ -31,11 +31,12 @@ pfs_df <- pfs_df[order(rownames(pfs_df)), ]
 clin <- cbind(clin, pfs_df)
 
 # TODO: Format the clinical data with common columns etc.
-selected_cols <- c('patientid', 'tissue:ch1', 'disease state:ch1', 'time_PFS', 'evtPFS')
+selected_cols <- c('patientid', 'tissue:ch1', 'time_PFS', 'evtPFS')
 remaining_cols <- colnames(clin)[!colnames(clin) %in% selected_cols]
 clin <- clin[, c(selected_cols, remaining_cols)]
 
-colnames(clin)[colnames(clin) %in% selected_cols] <- c('patientid', 'tissueid', 'histo', 't.pfs', 'pfs')
+colnames(clin)[colnames(clin) %in% selected_cols] <- c('patientid', 'tissueid', 't.pfs', 'pfs')
+clin$tissueid <- 'Lung'
 clin <- add_column(clin, response=NA, response.other.info=NA, recist=NA, .after='tissueid')
 clin$t.pfs <- as.numeric(clin$t.pfs)
 clin$pfs <- as.numeric(clin$pfs)
@@ -46,6 +47,7 @@ clin <- add_column(
   sex=NA,
   age=NA,
   stage=NA,
+  histo=NA,
   treatmentid="anti-PD-1/anti-PD-L1",
   drug_type=NA,
   dna=NA,
@@ -58,5 +60,8 @@ clin <- add_column(
 
 clin <- clin[, c("patientid", "sex", "age", "treatmentid", "tissueid", "histo", "stage", "response.other.info", "recist", "response", "drug_type", "dna", "rna", "t.pfs", "pfs", "t.os", "os", 'survival_unit', remaining_cols)]
 colnames(clin)[colnames(clin) %in% c('t.pfs', 'pfs', "t.os", "os")] <- c("survival_time_pfs", "event_occurred_pfs", 'survival_time_os', 'event_occurred_os')
+
+clin$patientid[!is.na(as.numeric(clin$patientid))] <- paste0('p', clin$patientid[!is.na(as.numeric(clin$patientid))])
+rownames(clin) <- clin$patientid
 
 write.table(clin, file = file.path(output_dir, "ICB_Fumet2_metadata.tsv"), row.names = TRUE, col.names=TRUE, sep = "\t")
