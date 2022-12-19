@@ -52,7 +52,7 @@ clin <- add_column(
   treatmentid = "",
   drug_type = "anti-PD-1/anti-PD-L1",
   dna = NA,
-  rna = NA,
+  rna = "tpm",
   t.os = NA,
   os = NA,
   survival_unit = "month",
